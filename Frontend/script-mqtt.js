@@ -58,6 +58,7 @@ const displayChat = () => {
             messageBox.appendChild(newChild);
         });
     }
+    messageBox.scrollTo(0, messageBox.scrollHeight);
 }
 
 const onJoinChat = () => {
