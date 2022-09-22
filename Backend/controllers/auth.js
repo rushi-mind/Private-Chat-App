@@ -7,7 +7,7 @@ const signup = (async (req, res) => {
 });
 
 const login = (async (req, res) => {
-    console.log(req.body);
+    // console.log(req.body);
     let { id, pin } = req.body;
     let user = await db.User.findOne({ where: { id } });
     if (user) {
