@@ -14,24 +14,46 @@ let client;
 let onlineUsers = [];
 let currentTopic = null;
 let currentMessage = null;
+let groups = [];
 
 const updateOnline = (users) => {
-    document.getElementById('main2-div1').innerHTML = '<div style="color: green;">ONLINE USERS</div>';
+    let onlineUsersListDiv = document.getElementById('online-users-list');
+    onlineUsersListDiv.innerHTML = '<div style="color: green;">ONLINE USERS</div>';
     users.forEach(currentUser => {
         if(currentUser.id != user.id) {
             let newChild = document.createElement('div');
             newChild.classList.add('online-users');
-            newChild.id = currentUser.id;
+            newChild.id = `user-${currentUser.id}`;
             newChild.innerText = currentUser.name;
-            newChild.addEventListener('click', (e) => {
-                currentTopic = e.target.id;
+            newChild.addEventListener('click', e => {
+                currentTopic = e.target.id.split('-')[1];
                 currentMessage = e.target.innerText;
                 document.getElementById('current-chat').innerText = currentMessage;
                 displayChat();
                 document.getElementById(e.target.id).style.color = 'white';
             });
-            document.getElementById('main2-div1').appendChild(newChild);
+            onlineUsersListDiv.appendChild(newChild);
         }
+    });
+}
+
+const updateGroups = () => {
+    let groupsListDiv = document.getElementById('groups-list');
+    groupsListDiv.innerHTML = `<div style="color: green;">GROUPS</div>`;
+    groups.forEach(current => {
+        let newChild = document.createElement('div');
+        newChild.classList.add('groups');
+        newChild.id = `group-${current.id}`;
+        newChild.innerText = current.name;
+        client.subscribe(`group-${current.id}`);
+        newChild.addEventListener('click', e => {
+            currentTopic = `${e.target.id}`;
+            currentMessage = e.target.innerText;
+            document.getElementById('current-chat').innerText = currentMessage;
+            displayChat();
+            document.getElementById(e.target.id).style.color = 'white';
+        });
+        groupsListDiv.appendChild(newChild);
     });
 }
 
@@ -39,7 +61,6 @@ const displayChat = () => {
     let messageBox = document.getElementById('messages-box');
     if(!currentTopic) {
         messageBox.innerHTML = `
-            <button style="float: right;" id="logout-button">Logout</button>
             <div class="message center">Select a chat to continue</div>
         `;
     } else {
@@ -47,7 +68,6 @@ const displayChat = () => {
         chat = JSON.parse(localStorage.getItem(chat));
         if(!chat) chat = [];
         messageBox.innerHTML = `
-            <button style="float: right;" id="logout-button">Logout</button>
             <div class="message center">You joined the chat</div>
         `;
         chat.forEach(current => {
@@ -61,7 +81,7 @@ const displayChat = () => {
     messageBox.scrollTo(0, messageBox.scrollHeight);
 }
 
-const onJoinChat = () => {
+const onJoinChat = async () => {
 
     user = JSON.parse(localStorage.getItem('user'));
     document.getElementById('head').innerHTML = `
@@ -72,21 +92,22 @@ const onJoinChat = () => {
     document.getElementById('main2').style.display = 'flex';
     onlineUsers[0] = user;
 
+    let res = await fetch(`${config.HTTP_URL}/groups/${user.id}`);
+    let data = await res.json();
+    if(data.status) groups = data.data;
+    
     client = mqtt.connect(MQTT_CONNECTION_HOST, MQTT_CONNECTION_OPTION);
     client.publish('user-joined', JSON.stringify(user));
-    client.subscribe('user-joined');
-    client.subscribe('user-left');
+    client.subscribe(`new-group-${user.id}`);
     client.subscribe('updated-users-list');
     client.subscribe(`${user.id}`);
     document.getElementById('current-chat').innerText = currentMessage;
-    
+
+    updateGroups();
     displayChat();
 
     client.on('message', (topic, payload) => {
         payload = JSON.parse(payload.toString());
-        let messageBox = document.getElementById('messages-box');
-        let newChild = document.createElement('div');
-        newChild.classList.add('message');
         switch (topic) {
             case 'updated-users-list':
                 onlineUsers = payload;
@@ -98,8 +119,27 @@ const onJoinChat = () => {
                 if(!privateChat) privateChat = [];
                 privateChat.push(payload);
                 localStorage.setItem(`chat-${payload.user.id}`, JSON.stringify(privateChat));
-                document.getElementById(payload.user.id).style.color = 'yellow';
                 if(currentTopic == payload.user.id) displayChat();
+                else document.getElementById(`user-${payload.user.id}`).style.color = 'yellow';
+                break;
+
+            case `new-group-${user.id}`:
+                groups.push(payload);
+                updateGroups();
+                document.getElementById(`group-${payload.id}`).style.color = 'yellow';
+                break;
+            
+            default:
+                if(topic.includes('group-')) {
+                    if(payload.user.id != user.id) {
+                        let chat = JSON.parse(localStorage.getItem(`chat-${topic}`));
+                        if(!chat) chat = [];
+                        chat.push(payload);
+                        localStorage.setItem(`chat-${topic}`, JSON.stringify(chat));
+                        if(currentTopic == topic) displayChat();
+                        else document.getElementById(topic).style.color = 'yellow';
+                    }
+                }
                 break;
         }
     });
@@ -214,3 +254,55 @@ document.getElementById('logout-button').addEventListener('click', () => {
 window.onbeforeunload = () => {
     client.publish('user-left', JSON.stringify(user));
 }
+
+
+
+
+
+
+
+
+
+/* ********************************************************** */
+document.getElementById('create-group-button').addEventListener('click', async () => {
+    let res = await fetch(`${config.HTTP_URL}/users`);
+    let data = await res.json();
+    let usersListDiv = document.getElementById('users-list');
+    let tempHTML = `<input type="text" id="group-name" placeholder="Group Name">`;
+    for(let i=0; i<data.length; i++) {
+        if(data[i].id == user.id) continue;
+        tempHTML += `
+            <input type="checkbox" class="user-checkboxes" id="${data[i].id}" name="${data[i].id}">
+            <label for="${data[i].id}">${data[i].name}</label><br>
+        `;
+    }
+    usersListDiv.innerHTML += tempHTML;
+    usersListDiv.innerHTML += `<button id="submit-group-button">Create</button>`;
+    document.getElementById('submit-group-button').addEventListener('click', async () => {
+        let groupName = document.getElementById('group-name').value;
+        let userCheckboxes = document.getElementsByClassName('user-checkboxes');
+        let IDs = `{"${user.id}": true`;
+        let IDs2 = [];
+        IDs2.push(user.id);
+        Array.from(userCheckboxes).forEach(current => {
+            if(current.checked) {
+                IDs += `,"${current.id}": true`;
+                IDs2.push(current.id);
+            }
+        });
+        IDs += '}';
+
+        let res = await fetch(`${config.HTTP_URL}/group`, {
+            method: "POST",
+            body: JSON.stringify({ groupName, IDs: JSON.parse(IDs) }),
+            headers: { "Content-type": "application/json; charset=UTF-8" }
+        });
+        let data = await res.json();
+        if(data.status) {
+            for(let i=0; i<IDs2.length; i++) {
+                client.publish(`new-group-${IDs2[i]}`, JSON.stringify({ name: groupName, id: data.groupID }));
+            }
+        }
+        usersListDiv.innerHTML = ``;
+    });
+});

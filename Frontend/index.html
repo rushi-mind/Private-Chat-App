@@ -36,6 +36,12 @@
 
         .online-users {
             margin: 5px auto;
+            cursor: pointer;
+        }
+
+        .groups {
+            margin: 5px auto;
+            cursor: pointer;
         }
 
         #main2-div2 {
@@ -120,10 +126,6 @@
             font-size: 14px;
             color: rgb(35, 51, 82);
         }
-
-        .online-users {
-            cursor: pointer;
-        }
     </style>
 </head>
 
@@ -152,11 +154,14 @@
 
     <!-- Logged in Page -->
     <div id="main2">
-        <div id="main2-div1"></div>
+        <div id="main2-div1">
+            <div id="online-users-list" style="margin: 20px;"></div>
+            <div id="groups-list" style="margin: 20px;"></div>
+        </div>
         <div id="main2-div2">
             <div style="color: white; font-size: large; margin: 5px;" id="current-chat"></div>
+            <button style="float: right;" id="logout-button">Logout</button>
             <div id="messages-box">
-                <button style="float: right;" id="logout-button">Logout</button>
                 <div class="message center">You joined the chat</div>
             </div>
             <div id="type-message">
@@ -167,6 +172,10 @@
                     <button id="send-button">SEND</button>
                 </div>
             </div>
+        </div>
+        <div class="temp" style="width: 150px; background-color: black; color: white;">
+            <button id="create-group-button">Create Group</button>
+            <div id="users-list"></div>
         </div>
     </div>
 </body>
