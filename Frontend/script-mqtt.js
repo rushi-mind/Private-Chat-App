@@ -26,6 +26,7 @@ const updateOnline = (users) => {
             newChild.id = `user-${currentUser.id}`;
             newChild.innerText = currentUser.name;
             newChild.addEventListener('click', e => {
+                document.getElementById('group-members').innerHTML = ``;
                 currentTopic = e.target.id.split('-')[1];
                 currentMessage = e.target.innerText;
                 document.getElementById('current-chat').innerText = currentMessage;
@@ -40,6 +41,7 @@ const updateOnline = (users) => {
 const updateGroups = () => {
     let groupsListDiv = document.getElementById('groups-list');
     groupsListDiv.innerHTML = `<div style="color: green;">GROUPS</div>`;
+    let i=0;
     groups.forEach(current => {
         let newChild = document.createElement('div');
         newChild.classList.add('groups');
@@ -52,6 +54,22 @@ const updateGroups = () => {
             document.getElementById('current-chat').innerText = currentMessage;
             displayChat();
             document.getElementById(e.target.id).style.color = 'white';
+
+            let groupMembersDiv = document.getElementById('group-members');
+            groupMembersDiv.innerHTML = `<div style="color: skyblue;">Group Members:</div>`;
+            let groupUsers = null;
+            for(let i=0; i<groups.length; i++) {
+                if(groups[i]['name'] == currentMessage) {
+                    groupUsers = groups[i].userIDs;
+                    break;
+                }
+            }
+            let keys = Object.keys(groupUsers);
+            keys.forEach(key => {
+                let tempChild = document.createElement('div');
+                tempChild.innerText = groupUsers[key];
+                groupMembersDiv.appendChild(tempChild);
+            });
         });
         groupsListDiv.appendChild(newChild);
     });
@@ -272,7 +290,7 @@ document.getElementById('create-group-button').addEventListener('click', async (
     for(let i=0; i<data.length; i++) {
         if(data[i].id == user.id) continue;
         tempHTML += `
-            <input type="checkbox" class="user-checkboxes" id="${data[i].id}" name="${data[i].id}">
+            <input type="checkbox" class="user-checkboxes" id="${data[i].id}" name="${data[i].name}">
             <label for="${data[i].id}">${data[i].name}</label><br>
         `;
     }
@@ -281,12 +299,12 @@ document.getElementById('create-group-button').addEventListener('click', async (
     document.getElementById('submit-group-button').addEventListener('click', async () => {
         let groupName = document.getElementById('group-name').value;
         let userCheckboxes = document.getElementsByClassName('user-checkboxes');
-        let IDs = `{"${user.id}": true`;
+        let IDs = `{"${user.id}": "${user.name}"`;
         let IDs2 = [];
         IDs2.push(user.id);
         Array.from(userCheckboxes).forEach(current => {
             if(current.checked) {
-                IDs += `,"${current.id}": true`;
+                IDs += `,"${current.id}": "${current.name}"`;
                 IDs2.push(current.id);
             }
         });

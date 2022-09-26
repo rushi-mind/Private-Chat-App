@@ -9,14 +9,9 @@ const postGroup = (async (req, res) => {
 
 const getGroups = (async (req, res) => {
     try {
-        let query = `SELECT \`id\`, \`name\` FROM \`groups\` WHERE userIDs->'$."${req.params.userID}"' = true;`
+        let query = `SELECT \`id\`, \`name\`, \`userIDs\` FROM \`groups\` WHERE userIDs->'$."${req.params.userID}"' IS NOT NULL;`
         console.log(query);
         let temp = (await db.sequelize.query(query))[0];
-        // let groupIDs = [];
-        // temp.forEach(current => {
-        //     groupIDs.push(current.id);
-        // });
-        // console.log('came here: ', groupIDs);
         res.send({status: 1, data: temp});
     } catch(error) {
         res.send({status: 0});
